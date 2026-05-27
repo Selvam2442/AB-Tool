@@ -38,6 +38,21 @@
             user-select: none;
         }
 
+        /* Header Styling */
+        .abacus-title {
+            color: #d64d4d;
+            font-weight: 300;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .abacus-subtitle {
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            color: #333;
+            font-weight: 500;
+        }
+
         /* Display Box */
         .display-container {
             background: #fff;
@@ -173,30 +188,29 @@
 
         <div>
             <div class="display-container" id="value-display">0</div>
-         
-            <button class="btn btn-outline-danger" onclick="resetAbacus()">
-                <i class="fa-solid fa-rotate-right"></i> Reset Abacus
-            </button>
-        
         </div>
         
 
         <div class="d-flex justify-content-center">
             <div class="abacus-board" id="abacus">
                 <div class="columns-container top-deck" id="top-deck">
-                </div>
+                    </div>
                 
                 <div class="divider-bar"></div>
 
                 <div class="columns-container bottom-deck" id="bottom-deck">
-                </div>
+                    </div>
 
                 <div class="columns-container" id="col-labels">
-                </div>
+                    </div>
             </div>
         </div>
 
-
+        <div class="controls">
+            <button class="btn btn-outline-danger" onclick="resetAbacus()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Abacus
+            </button>
+        </div>
 
     </div>
 
@@ -205,6 +219,7 @@
     <script>
         const NUM_COLUMNS = 13;
         
+        // Array to store the numeric value of each column (index 0 is left-most, index 12 is right-most unit)
         let columnValues = new Array(NUM_COLUMNS).fill(0);
 
         function initAbacus() {
@@ -217,8 +232,8 @@
             colLabels.innerHTML = '';
 
             for (let i = 0; i < NUM_COLUMNS; i++) {
-                // Determines unit dot (every 3rd column from right, EXCLUDING the 1st left dot)
-                const isUnitDot = (NUM_COLUMNS - 1 - i) % 3 === 0 && (NUM_COLUMNS - 1 - i) !== 0 && i !== 0;
+                // Determine if this column should have a unit dot (every 3rd column from right)
+                const isUnitDot = (NUM_COLUMNS - 1 - i) % 3 === 0 && (NUM_COLUMNS - 1 - i) !== 0;
 
                 // --- Top Deck (Value 5) ---
                 const topCol = document.createElement('div');
@@ -247,7 +262,7 @@
                     const bottomSlot = document.createElement('div');
                     bottomSlot.className = 'bead-slot bottom-bead';
                     bottomSlot.setAttribute('data-col', i);
-                    bottomSlot.setAttribute('data-row', j);
+                    bottomSlot.setAttribute('data-row', j); // 0 is closest to middle bar
                     bottomSlot.innerHTML = '<div class="bead-inner"></div>';
                     bottomSlot.onclick = () => toggleBottomBead(i, j);
                     bottomCol.appendChild(bottomSlot);
@@ -282,8 +297,10 @@
             const clickedBead = bottomBeads[rowIndex];
             let isActive = clickedBead.classList.contains('active');
             
+            let currentBottomValue = columnValues[colIndex] % 5;
+            
             if (!isActive) {
-                // Activate clicked bead and all above it 
+                // Activate clicked bead and all above it (closer to center bar)
                 for (let j = 0; j <= rowIndex; j++) {
                     bottomBeads[j].classList.add('active');
                 }
@@ -299,37 +316,17 @@
         }
 
         function updateDisplay() {
-            let strParts = [];
-            let currentSum = 0;
-            let inGroup = false;
-
-            // Grouping Logic: Sum adjacent active columns. Empty columns act as positional zeros.
+            let totalString = "";
             for (let i = 0; i < NUM_COLUMNS; i++) {
-                let val = columnValues[i];
-                if (val > 0) {
-                    currentSum += val;
-                    inGroup = true;
-                } else {
-                    if (inGroup) {
-                        strParts.push(currentSum.toString());
-                        currentSum = 0;
-                        inGroup = false;
-                    }
-                    strParts.push("0");
-                }
+                totalString += columnValues[i].toString();
             }
             
-            if (inGroup) {
-                strParts.push(currentSum.toString());
-            }
-
-            let finalString = strParts.join('');
-            
-            // Format number cleanly
-            let formattedNumber = finalString.replace(/^0+/, '');
+            // Remove leading zeros, but keep at least one '0' if all are zero
+            let formattedNumber = totalString.replace(/^0+/, '');
             if (formattedNumber === '') {
                 formattedNumber = '0';
             } else {
+                // Add commas for standard number formatting
                 formattedNumber = BigInt(formattedNumber).toLocaleString('en-US');
             }
             
@@ -344,6 +341,7 @@
             updateDisplay();
         }
 
+        // Initialize on load
         window.onload = initAbacus;
     </script>
 </body>
