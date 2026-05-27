@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Indian Abacus Simulator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Orientation Lock */
+        #portrait-warning {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+            background-color: #333;
+            color: white;
+            text-align: center;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+        
+        @media screen and (orientation: portrait) {
+            #app-container { display: none !important; }
+            #portrait-warning { display: flex; }
+        }
+
+        body {
+            background: linear-gradient(135deg, #fffadb 0%, #fffadb 40%, #fcf7d9 40%, #fcf7d9 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        /* Display Box */
+        .display-container {
+            background: #fff;
+            border: 2px solid #d4c89d;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            font-family: 'Courier New', Courier, monospace;
+            min-width: 300px;
+            text-align: right;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+            margin: 10px auto;
+            display: inline-block;
+        }
+
+        /* Abacus Board */
+        .abacus-board {
+            background-color: #e6dfb8;
+            border: 6px solid #d4c89d;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 10px 15px 25px rgba(0,0,0,0.2), inset 0 0 10px rgba(255,255,255,0.5);
+            display: inline-block;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .divider-bar {
+            height: 8px;
+            background-color: #d4c89d;
+            width: 100%;
+            margin: 10px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .divider-bar::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(0,0,0,0.1);
+        }
+
+        /* Columns & Beads */
+        .columns-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .abacus-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .col-number {
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 8px;
+            font-weight: bold;
+        }
+
+        /* Hexagonal Bead Slots */
+        .bead-slot {
+            width: 38px;
+            height: 24px;
+            background-color: #d1c696;
+            margin: 4px 0;
+            position: relative;
+            cursor: pointer;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.1s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The colored part of the bead */
+        .bead-inner {
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);
+            background-color: transparent;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        /* Top Deck Active (Red) */
+        .top-deck .bead-slot.active .bead-inner {
+            background: radial-gradient(circle at 30% 30%, #ff4d4d, #cc0000);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            transform: translateY(2px);
+        }
+
+        /* Bottom Deck Active (Green) */
+        .bottom-deck .bead-slot.active .bead-inner {
+            background: radial-gradient(circle at 30% 30%, #33cc66, #009933);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        
+        .dot {
+            width: 4px;
+            height: 4px;
+            background-color: #333;
+            border-radius: 50%;
+            position: absolute;
+            top: -6px;
+        }
+
+        .controls {
+            margin-top: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <i class="fa-solid fa-mobile-screen-button fa-4x mb-4" style="transform: rotate(90deg);"></i>
+        <h2>Please Rotate Your Device</h2>
+        <p>This abacus simulator works perfectly in landscape mode only.</p>
+    </div>
+
+    <div id="app-container" class="container-fluid text-center py-2 h-100 d-flex flex-column justify-content-center">
+
+        <div>
+            <div class="display-container" id="value-display">0</div>
+        </div>
+
+        <div class="d-flex justify-content-center">
+            <div class="abacus-board" id="abacus">
+                <div class="columns-container top-deck" id="top-deck">
+                </div>
+                
+                <div class="divider-bar"></div>
+
+                <div class="columns-container bottom-deck" id="bottom-deck">
+                </div>
+
+                <div class="columns-container" id="col-labels">
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-outline-danger" onclick="resetAbacus()">
+                <i class="fa-solid fa-rotate-right"></i> Reset Abacus
+            </button>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        const NUM_COLUMNS = 13;
+        
+        let columnValues = new Array(NUM_COLUMNS).fill(0);
+
+        function initAbacus() {
+            const topDeck = document.getElementById('top-deck');
+            const bottomDeck = document.getElementById('bottom-deck');
+            const colLabels = document.getElementById('col-labels');
+
+            topDeck.innerHTML = '';
+            bottomDeck.innerHTML = '';
+            colLabels.innerHTML = '';
+
+            for (let i = 0; i < NUM_COLUMNS; i++) {
+                // Determines unit dot (every 3rd column from right, EXCLUDING the 1st left dot)
+                const isUnitDot = (NUM_COLUMNS - 1 - i) % 3 === 0 && (NUM_COLUMNS - 1 - i) !== 0 && i !== 0;
+
+                // --- Top Deck (Value 5) ---
+                const topCol = document.createElement('div');
+                topCol.className = 'abacus-column';
+                
+                const topSlot = document.createElement('div');
+                topSlot.className = 'bead-slot top-bead';
+                topSlot.setAttribute('data-col', i);
+                topSlot.innerHTML = '<div class="bead-inner"></div>';
+                topSlot.onclick = () => toggleTopBead(i);
+                
+                if (isUnitDot) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    topCol.appendChild(dot);
+                }
+                
+                topCol.appendChild(topSlot);
+                topDeck.appendChild(topCol);
+
+                // --- Bottom Deck (Value 1 each, 4 beads) ---
+                const bottomCol = document.createElement('div');
+                bottomCol.className = 'abacus-column';
+                
+                for (let j = 0; j < 4; j++) {
+                    const bottomSlot = document.createElement('div');
+                    bottomSlot.className = 'bead-slot bottom-bead';
+                    bottomSlot.setAttribute('data-col', i);
+                    bottomSlot.setAttribute('data-row', j);
+                    bottomSlot.innerHTML = '<div class="bead-inner"></div>';
+                    bottomSlot.onclick = () => toggleBottomBead(i, j);
+                    bottomCol.appendChild(bottomSlot);
+                }
+                bottomDeck.appendChild(bottomCol);
+
+                // --- Labels (13 down to 1) ---
+                const labelCol = document.createElement('div');
+                labelCol.className = 'abacus-column';
+                labelCol.innerHTML = `<span class="col-number">${NUM_COLUMNS - i}</span>`;
+                colLabels.appendChild(labelCol);
+            }
+            updateDisplay();
+        }
+
+        function toggleTopBead(colIndex) {
+            const colBeads = document.querySelectorAll(`.top-bead[data-col="${colIndex}"]`);
+            const bead = colBeads[0];
+            
+            if (bead.classList.contains('active')) {
+                bead.classList.remove('active');
+                columnValues[colIndex] -= 5;
+            } else {
+                bead.classList.add('active');
+                columnValues[colIndex] += 5;
+            }
+            updateDisplay();
+        }
+
+        function toggleBottomBead(colIndex, rowIndex) {
+            const bottomBeads = document.querySelectorAll(`.bottom-bead[data-col="${colIndex}"]`);
+            const clickedBead = bottomBeads[rowIndex];
+            let isActive = clickedBead.classList.contains('active');
+            
+            if (!isActive) {
+                // Activate clicked bead and all above it 
+                for (let j = 0; j <= rowIndex; j++) {
+                    bottomBeads[j].classList.add('active');
+                }
+                columnValues[colIndex] = Math.floor(columnValues[colIndex] / 5) * 5 + (rowIndex + 1);
+            } else {
+                // Deactivate clicked bead and all below it
+                for (let j = rowIndex; j < 4; j++) {
+                    bottomBeads[j].classList.remove('active');
+                }
+                columnValues[colIndex] = Math.floor(columnValues[colIndex] / 5) * 5 + rowIndex;
+            }
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            let strParts = [];
+            let currentSum = 0;
+            let inGroup = false;
+
+            // Grouping Logic: Sum adjacent active columns. Empty columns act as positional zeros.
+            for (let i = 0; i < NUM_COLUMNS; i++) {
+                let val = columnValues[i];
+                if (val > 0) {
+                    currentSum += val;
+                    inGroup = true;
+                } else {
+                    if (inGroup) {
+                        strParts.push(currentSum.toString());
+                        currentSum = 0;
+                        inGroup = false;
+                    }
+                    strParts.push("0");
+                }
+            }
+            
+            if (inGroup) {
+                strParts.push(currentSum.toString());
+            }
+
+            let finalString = strParts.join('');
+            
+            // Format number cleanly
+            let formattedNumber = finalString.replace(/^0+/, '');
+            if (formattedNumber === '') {
+                formattedNumber = '0';
+            } else {
+                formattedNumber = BigInt(formattedNumber).toLocaleString('en-US');
+            }
+            
+            document.getElementById('value-display').innerText = formattedNumber;
+        }
+
+        function resetAbacus() {
+            columnValues.fill(0);
+            document.querySelectorAll('.bead-slot').forEach(bead => {
+                bead.classList.remove('active');
+            });
+            updateDisplay();
+        }
+
+        window.onload = initAbacus;
+    </script>
+</body>
+</html>
